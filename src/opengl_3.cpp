@@ -89,6 +89,7 @@ void OpenGLContext::setupScene(int argc, char *argv[]){
 	NormalMatrixLocation = glGetUniformLocation(shader->id(),"NormalMatrix");
 	light0.positionLocation = glGetUniformLocation(shader->id(),"light.position");
 	samplerLocation = glGetUniformLocation(shader->id(), "inSampler");
+	m_ShadowMapLocation = glGetUniformLocation(shader->id(), "inShadowMap");
 	
 	if(MVPMatrixLocation == -1 || ModelViewMatrixLocation == -1 || NormalMatrixLocation == -1 ||
 	   light0.positionLocation == -1 || samplerLocation == -1){
@@ -109,6 +110,7 @@ void OpenGLContext::setupScene(int argc, char *argv[]){
 	if(!texture0->Load()) std::cout << "Couldn't load texture!" << std::endl;
 	if(!texture1->Load()) std::cout << "Couldn't load texture!" << std::endl;
 	if(!texture2->Load()) std::cout << "Couldn't load texture!" << std::endl;
+	if(!m_ShadowMapFBO.Init(windowWidth, windowHeight)) std::cout << "Couldn't initialize FBO!" << std::endl;
 }
 
 void OpenGLContext::reshapeWindow(int w, int h){
@@ -129,37 +131,83 @@ void OpenGLContext::processScene(void){
 	}
 }
 
-void OpenGLContext::renderScene(void){
+void OpenGLContext::fboPass(void){
+
+	m_ShadowMapFBO.BindForWriting();
+
+	glClear(GL_DEPTH_BUFFER_BIT);
+
+	glm::mat4 lightViewMatrix;
+	glm::vec3 light_position(-5.0, 10.0, 0.0);
+	glm::vec3 light_direction = -glm::normalize(light_position);
+	glm::vec3 upVector(0.0,1.0,0.0);
+	glm::vec3 sVector;
+	sVector = glm::normalize(glm::cross(light_direction, upVector));
+	upVector = glm::normalize(glm::cross(sVector, light_direction));
+	
+	lightViewMatrix = glm::mat4(
+		glm::vec4(sVector,glm::dot(-light_position,sVector)),
+		glm::vec4(upVector,glm::dot(-light_position,upVector)),
+		glm::vec4(-light_direction,glm::dot(light_direction,light_position)),
+		glm::vec4(0.0,0.0,0.0,1.0)
+	);
+	lightViewMatrix = glm::transpose(lightViewMatrix);
+	
+	glm::mat4 ModelViewMatrix = lightViewMatrix * ModelMatrix;
+	glm::mat4 MVPMatrix = ProjectionMatrix * ModelViewMatrix;
+	
+	{
+		ModelViewMatrix = glm::translate(ModelViewMatrix, glm::vec3(0.0, 1.0, 0.0));
+		MVPMatrix = ProjectionMatrix * ModelViewMatrix;
+		glUniformMatrix4fv(MVPMatrixLocation, 1, GL_FALSE, &MVPMatrix[0][0]);
+		
+		mesh.draw();
+	}
+	
+	glBindFramebuffer(GL_FRAMEBUFFER, 0);
+}
+
+void OpenGLContext::drawPass(void){
+
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+	
+	// m_ShadowMapFBO.BindForReading(GL_TEXTURE0 + 1);
+	// glUniform1i(m_ShadowMapLocation, 1);
+	
+	texture2->Bind(GL_TEXTURE0 + 0);
+	glUniform1i(samplerLocation, 0);
+	
+	glm::mat4 ModelViewMatrix = ViewMatrix * ModelMatrix;
+	glm::mat3 NormalMatrix = glm::mat3(glm::transpose(glm::inverse(ModelViewMatrix)));
+	glm::mat4 MVPMatrix = ProjectionMatrix * ModelViewMatrix;
+	
+	glm::vec3 lightEyePosition = glm::vec3(ViewMatrix * glm::vec4(light0.position,1.0));
+	glUniform3fv(light0.positionLocation, 1, &lightEyePosition[0]);
+	
+	glUniformMatrix4fv(MVPMatrixLocation, 1, GL_FALSE, &MVPMatrix[0][0]);
+	glUniformMatrix4fv(ModelViewMatrixLocation, 1, GL_FALSE, &ModelViewMatrix[0][0]);
+	glUniformMatrix3fv(NormalMatrixLocation, 1, GL_FALSE, &NormalMatrix[0][0]);
+	
+	skybox.draw();
+	texture1->Bind(GL_TEXTURE0 + 0);
+	plane.draw();
+	{
+		ModelViewMatrix = glm::translate(ModelViewMatrix, glm::vec3(0.0, 1.0, 0.0));
+		MVPMatrix = ProjectionMatrix * ModelViewMatrix;
+		glUniformMatrix4fv(MVPMatrixLocation, 1, GL_FALSE, &MVPMatrix[0][0]);
+		glUniformMatrix4fv(ModelViewMatrixLocation, 1, GL_FALSE, &ModelViewMatrix[0][0]);
+		
+		texture0->Bind(GL_TEXTURE0 + 0);
+		mesh.draw();
+	}
+}
+
+void OpenGLContext::renderScene(void){
 	
 	shader->bind();
 	{
-		texture2->Bind(GL_TEXTURE0 + 0);
-		glUniform1i(samplerLocation, 0);
-	
-		glm::mat4 ModelViewMatrix = ViewMatrix * ModelMatrix;
-		glm::mat3 NormalMatrix = glm::mat3(glm::transpose(glm::inverse(ModelViewMatrix)));
-		glm::mat4 MVPMatrix = ProjectionMatrix * ModelViewMatrix;
-		
-		glm::vec3 lightEyePosition = glm::vec3(ViewMatrix * glm::vec4(light0.position,1.0));
-		glUniform3fv(light0.positionLocation, 1, &lightEyePosition[0]);
-		
-		glUniformMatrix4fv(MVPMatrixLocation, 1, GL_FALSE, &MVPMatrix[0][0]);
-		glUniformMatrix4fv(ModelViewMatrixLocation, 1, GL_FALSE, &ModelViewMatrix[0][0]);
-		glUniformMatrix3fv(NormalMatrixLocation, 1, GL_FALSE, &NormalMatrix[0][0]);
-		
-		skybox.draw();
-		texture1->Bind(GL_TEXTURE0 + 0);
-		plane.draw();
-		{
-			ModelViewMatrix = glm::translate(ModelViewMatrix, glm::vec3(0.0, 1.0, 0.0));
-			MVPMatrix = ProjectionMatrix * ModelViewMatrix;
-			glUniformMatrix4fv(MVPMatrixLocation, 1, GL_FALSE, &MVPMatrix[0][0]);
-			glUniformMatrix4fv(ModelViewMatrixLocation, 1, GL_FALSE, &ModelViewMatrix[0][0]);
-			
-			texture0->Bind(GL_TEXTURE0 + 0);
-			mesh.draw();
-		}
+		fboPass();
+		drawPass();
 	}
 	shader->unbind();
 	

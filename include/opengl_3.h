@@ -8,6 +8,7 @@
 #include "mesh.h"
 #include "camera.h"
 #include "texture.h"
+#include "shadowmap_FBO.h"
 
 struct Light{
 	glm::vec3 position;
@@ -30,6 +31,8 @@ public:
 	void reshapeWindow(int w, int h); 	// Method to get our window width and height on resize  
 	void renderScene(void); 			// Render scene (display method from previous OpenGL tutorials)
 	void processScene(void);
+	void fboPass(void);
+	void drawPass(void);
 	
 	void toggleState(std::string state);
 	bool getState(std::string state);
@@ -56,6 +59,7 @@ private:
 	int NormalMatrixLocation;
 	int MVPMatrixLocation;
 	int samplerLocation;
+	int m_ShadowMapLocation;
 
 	bool redisplay;
 	
@@ -67,6 +71,7 @@ private:
 	Texture *texture0;
 	Texture *texture1;
 	Texture *texture2;
+	CShadowMapFBO m_ShadowMapFBO;
 };
 
 

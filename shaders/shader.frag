@@ -6,6 +6,7 @@ struct Light{
 
 uniform Light light;
 uniform sampler2D inSampler;
+uniform sampler2D inShadowMap;
 
 smooth in vec3 pass_Normal;
 smooth in vec3 pass_Position;
@@ -14,6 +15,10 @@ smooth in vec2 TexCoord;
 out vec4 out_Color;
 
 void main(void){
+	
+	float Depth = texture(inShadowMap, TexCoord).x;
+	Depth = 1.0 - (1.0 - Depth) * 25.0;
+
 	vec3 Normal = normalize(pass_Normal);
 	vec3 light_Direction = normalize(light.position-pass_Position);
 	vec3 camera_Direction = normalize(-pass_Position);
@@ -28,6 +33,6 @@ void main(void){
 		float fspecular = pow(specular, 128.0);
 		temp_Color += fspecular;
 	}
-	// out_Color = vec4(temp_Color,1.0);
 	out_Color = texture(inSampler, TexCoord) * vec4(temp_Color,1.0);
+	// out_Color = vec4(Depth);
 }
