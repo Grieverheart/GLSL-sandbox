@@ -2,6 +2,7 @@
 #define __OPENGL_3_H
 
 #include <string>
+#include <vector>
 #include "main.h"
 #include "shader.h"
 #include "obj_parser.h"
@@ -9,18 +10,7 @@
 #include "camera.h"
 #include "texture.h"
 #include "shadowmap_FBO.h"
-
-struct Light{
-	glm::vec3 position;
-	int positionLocation;
-	Light(glm::vec4 position):
-		position(position)
-	{};
-	Light(void):
-		position(glm::vec4(100.0, 40.0, 100.0, 1.0))
-	{};
-	~Light(void){};
-};
+#include "light.h"
 
 class OpenGLContext{
 public:
@@ -54,6 +44,11 @@ private:
 	glm::mat4 ProjectionMatrix;
 	glm::mat4 ViewMatrix;
 	glm::mat4 ModelMatrix;
+	glm::mat4 lightViewMatrix;
+	glm::mat4 IdentityMatrix;
+	glm::mat4 lightProjectionMatrix;
+	
+	void calcLightViewMatrix(void);
 
 	int ModelViewMatrixLocation;
 	int NormalMatrixLocation;
@@ -67,7 +62,7 @@ private:
 	CMesh mesh;
 	CMesh plane;
 	CMesh skybox;
-	Light light0;
+	std::vector<CLight> light;
 	Texture *texture0;
 	Texture *texture1;
 	Texture *texture2;

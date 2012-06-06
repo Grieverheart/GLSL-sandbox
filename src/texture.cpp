@@ -2,6 +2,9 @@
 
 Texture::~Texture(void){
 	if(image) delete image;
+    if(textureObj != 0){
+		glDeleteTextures(1, &textureObj);
+    }
 }
 
 Texture::Texture(GLenum textureTarget, const char *filename){

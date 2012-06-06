@@ -3,8 +3,7 @@
 OpenGLContext::OpenGLContext(void):
 	mesh(1.0f),
 	plane(50.),
-	skybox(50.0f),
-	light0(glm::vec4(0.0, 40.0, 0.0, 1.0))
+	skybox(50.0f)
 {
 	/////////////////////////////////////////////////
 	// Default Constructor for OpenGLContext class //
@@ -12,9 +11,11 @@ OpenGLContext::OpenGLContext(void):
 	zoom = 0.0f;
 	fov = 60.0f;
 	redisplay = false;
+	light.push_back(CLight(glm::vec3(-7.0, 7.0, 0.0), glm::vec3(1.0, -1.0, 0.0)));
 	texture0 = new Texture(GL_TEXTURE_2D, "Textures/crate.bmp");
 	texture1 = new Texture(GL_TEXTURE_2D, "Textures/floor-tile.bmp");
 	texture2 = new Texture(GL_TEXTURE_2D, "Textures/wall.bmp");
+	IdentityMatrix = glm::mat4(1.0);
 }
 
 OpenGLContext::~OpenGLContext(void) {
@@ -87,12 +88,11 @@ void OpenGLContext::setupScene(int argc, char *argv[]){
 	MVPMatrixLocation = glGetUniformLocation(shader->id(),"MVPMatrix");
 	ModelViewMatrixLocation = glGetUniformLocation(shader->id(),"ModelViewMatrix");
 	NormalMatrixLocation = glGetUniformLocation(shader->id(),"NormalMatrix");
-	light0.positionLocation = glGetUniformLocation(shader->id(),"light.position");
 	samplerLocation = glGetUniformLocation(shader->id(), "inSampler");
 	m_ShadowMapLocation = glGetUniformLocation(shader->id(), "inShadowMap");
+	if(!light[0].Init(shader->id())) std::cout << "Could not bind light uniforms" << std::endl;
 	
-	if(MVPMatrixLocation == -1 || ModelViewMatrixLocation == -1 || NormalMatrixLocation == -1 ||
-	   light0.positionLocation == -1 || samplerLocation == -1){
+	if(MVPMatrixLocation == -1 || ModelViewMatrixLocation == -1 || NormalMatrixLocation == -1 || samplerLocation == -1){
 		std::cout << "Unable to bind uniform" << std::endl;
 	}
 	
@@ -111,6 +111,8 @@ void OpenGLContext::setupScene(int argc, char *argv[]){
 	if(!texture1->Load()) std::cout << "Couldn't load texture!" << std::endl;
 	if(!texture2->Load()) std::cout << "Couldn't load texture!" << std::endl;
 	if(!m_ShadowMapFBO.Init(windowWidth, windowHeight)) std::cout << "Couldn't initialize FBO!" << std::endl;
+	//Change if you want full scene culling. It now only culls for fbo pass
+	glCullFace(GL_FRONT);
 }
 
 void OpenGLContext::reshapeWindow(int w, int h){
@@ -118,28 +120,25 @@ void OpenGLContext::reshapeWindow(int w, int h){
 	windowHeight = h;
 	glViewport(0, 0, windowWidth, windowHeight);
 	ProjectionMatrix = glm::perspective(fov+zoom, (float)windowWidth/(float)windowHeight, 0.1f, 100.0f);
+	if(!m_ShadowMapFBO.Init(windowWidth, windowHeight)) std::cout << "Couldn't initialize FBO!" << std::endl;
 }
 
 void OpenGLContext::processScene(void){
 	static float last_time = 0.0;
 	float this_time = glutGet(GLUT_ELAPSED_TIME)/1000.0f;
-	if(this_time - last_time >= 1.0f/61.0f){
+	// if(this_time - last_time >= 1.0f/61.0f){
 		redisplay = true;
 		last_time = this_time;
 		ProjectionMatrix = glm::perspective(fov+zoom, (float)windowWidth/(float)windowHeight, 0.1f, 100.0f);
 		ViewMatrix = camera.getView();
-	}
+		calcLightViewMatrix();
+	// }
 }
 
-void OpenGLContext::fboPass(void){
-
-	m_ShadowMapFBO.BindForWriting();
-
-	glClear(GL_DEPTH_BUFFER_BIT);
-
-	glm::mat4 lightViewMatrix;
-	glm::vec3 light_position(-5.0, 10.0, 0.0);
-	glm::vec3 light_direction = -glm::normalize(light_position);
+void OpenGLContext::calcLightViewMatrix(void){
+	//Calculate ViewMatrix
+	glm::vec3 light_position = light[0].getPosition();
+	glm::vec3 light_direction = light[0].getDirection();
 	glm::vec3 upVector(0.0,1.0,0.0);
 	glm::vec3 sVector;
 	sVector = glm::normalize(glm::cross(light_direction, upVector));
@@ -152,27 +151,40 @@ void OpenGLContext::fboPass(void){
 		glm::vec4(0.0,0.0,0.0,1.0)
 	);
 	lightViewMatrix = glm::transpose(lightViewMatrix);
+	lightProjectionMatrix = glm::perspective(fov+zoom, (float)windowWidth/(float)windowHeight, 10.0f, 30.0f);
+}
+
+void OpenGLContext::fboPass(void){
+	glEnable(GL_CULL_FACE);
+	// glEnable(GL_POLYGON_OFFSET_FILL);
+	// glPolygonOffset(1.0, 3.0);
+
+	m_ShadowMapFBO.BindForWriting();
+
+	glClear(GL_DEPTH_BUFFER_BIT);
 	
-	glm::mat4 ModelViewMatrix = lightViewMatrix * ModelMatrix;
-	glm::mat4 MVPMatrix = ProjectionMatrix * ModelViewMatrix;
+	glm::mat4 lightModelViewMatrix = lightViewMatrix * ModelMatrix;
+	glm::mat4 lightMVPMatrix = lightProjectionMatrix * lightModelViewMatrix;
 	
 	{
-		ModelViewMatrix = glm::translate(ModelViewMatrix, glm::vec3(0.0, 1.0, 0.0));
-		MVPMatrix = ProjectionMatrix * ModelViewMatrix;
-		glUniformMatrix4fv(MVPMatrixLocation, 1, GL_FALSE, &MVPMatrix[0][0]);
+		lightModelViewMatrix = glm::translate(lightModelViewMatrix, glm::vec3(0.0, 1.0, 0.0));
+		lightMVPMatrix = lightProjectionMatrix * lightModelViewMatrix;
+		glUniformMatrix4fv(MVPMatrixLocation, 1, GL_FALSE, &lightMVPMatrix[0][0]);
 		
 		mesh.draw();
 	}
 	
 	glBindFramebuffer(GL_FRAMEBUFFER, 0);
+	glDisable(GL_CULL_FACE);
+	// glDisable(GL_POLYGON_OFFSET_FILL);
 }
 
 void OpenGLContext::drawPass(void){
 
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 	
-	// m_ShadowMapFBO.BindForReading(GL_TEXTURE0 + 1);
-	// glUniform1i(m_ShadowMapLocation, 1);
+	m_ShadowMapFBO.BindForReading(GL_TEXTURE0 + 1);
+	glUniform1i(m_ShadowMapLocation, 1);
 	
 	texture2->Bind(GL_TEXTURE0 + 0);
 	glUniform1i(samplerLocation, 0);
@@ -180,9 +192,11 @@ void OpenGLContext::drawPass(void){
 	glm::mat4 ModelViewMatrix = ViewMatrix * ModelMatrix;
 	glm::mat3 NormalMatrix = glm::mat3(glm::transpose(glm::inverse(ModelViewMatrix)));
 	glm::mat4 MVPMatrix = ProjectionMatrix * ModelViewMatrix;
+	glm::mat4 lightModelViewMatrix = lightViewMatrix * ModelMatrix;
+	glm::mat4 lightMVPMatrix = lightProjectionMatrix * lightModelViewMatrix;
 	
-	glm::vec3 lightEyePosition = glm::vec3(ViewMatrix * glm::vec4(light0.position,1.0));
-	glUniform3fv(light0.positionLocation, 1, &lightEyePosition[0]);
+	light[0].uploadMVP(lightMVPMatrix);
+	light[0].uploadDirection(ViewMatrix);
 	
 	glUniformMatrix4fv(MVPMatrixLocation, 1, GL_FALSE, &MVPMatrix[0][0]);
 	glUniformMatrix4fv(ModelViewMatrixLocation, 1, GL_FALSE, &ModelViewMatrix[0][0]);
@@ -193,7 +207,10 @@ void OpenGLContext::drawPass(void){
 	plane.draw();
 	{
 		ModelViewMatrix = glm::translate(ModelViewMatrix, glm::vec3(0.0, 1.0, 0.0));
+		lightModelViewMatrix = glm::translate(lightModelViewMatrix, glm::vec3(0.0, 1.0, 0.0));
 		MVPMatrix = ProjectionMatrix * ModelViewMatrix;
+		lightMVPMatrix = lightProjectionMatrix * lightModelViewMatrix;
+		light[0].uploadMVP(lightMVPMatrix);
 		glUniformMatrix4fv(MVPMatrixLocation, 1, GL_FALSE, &MVPMatrix[0][0]);
 		glUniformMatrix4fv(ModelViewMatrixLocation, 1, GL_FALSE, &ModelViewMatrix[0][0]);
 		
