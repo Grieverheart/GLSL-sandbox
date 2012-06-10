@@ -52,13 +52,13 @@ bool OpenGLContext::create30Context(void){
 	// OpenGL 2.1 Context if it fails.				  //
 	////////////////////////////////////////////////////
 	
-	glutInitContextVersion(3,3);
+	glutInitContextVersion(3, 3);
 	glutInitContextProfile(GLUT_CORE_PROFILE);
 	
-	glutInitDisplayMode(GLUT_DOUBLE | GLUT_RGBA | GLUT_DEPTH | GLUT_ALPHA | GLUT_MULTISAMPLE);
-	glutInitWindowSize(600,600);
-	windowWidth=windowHeight=600;
-	glutInitWindowPosition(100,100);
+	glutInitDisplayMode(GLUT_DOUBLE | GLUT_RGBA | GLUT_DEPTH /*| GLUT_ALPHA*/);
+	glutInitWindowSize(600, 600);
+	windowWidth=windowHeight = 600;
+	glutInitWindowPosition(100, 100);
 	glutCreateWindow("Project");
 	
 	glewExperimental = GL_TRUE;
@@ -76,21 +76,19 @@ bool OpenGLContext::create30Context(void){
 }
 
 void OpenGLContext::setupScene(int argc, char *argv[]){
-	glClearColor(0.4f,0.6f,0.9f,1.0f);
+	glClearColor(0.4f, 0.6f, 0.9f, 1.0f);
 	
-	glEnable(GL_BLEND);
-	glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+	// glEnable(GL_BLEND);
+	// glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 	// glDisable(GL_BLEND);
 	glEnable(GL_DEPTH_TEST);
 	
-	shader = new Shader("shaders/shader.vert", "shaders/shader.frag");
+	shader = new Shader("shaders/gshader.vert", "shaders/gshader.frag");
 	
 	MVPMatrixLocation = glGetUniformLocation(shader->id(),"MVPMatrix");
 	ModelViewMatrixLocation = glGetUniformLocation(shader->id(),"ModelViewMatrix");
 	NormalMatrixLocation = glGetUniformLocation(shader->id(),"NormalMatrix");
 	samplerLocation = glGetUniformLocation(shader->id(), "inSampler");
-	m_ShadowMapLocation = glGetUniformLocation(shader->id(), "inShadowMap");
-	if(!light[0].Init(shader->id())) std::cout << "Could not bind light uniforms" << std::endl;
 	
 	if(MVPMatrixLocation == -1 || ModelViewMatrixLocation == -1 || NormalMatrixLocation == -1 || samplerLocation == -1){
 		std::cout << "Unable to bind uniform" << std::endl;
@@ -110,9 +108,7 @@ void OpenGLContext::setupScene(int argc, char *argv[]){
 	if(!texture0->Load()) std::cout << "Couldn't load texture!" << std::endl;
 	if(!texture1->Load()) std::cout << "Couldn't load texture!" << std::endl;
 	if(!texture2->Load()) std::cout << "Couldn't load texture!" << std::endl;
-	if(!m_ShadowMapFBO.Init(windowWidth, windowHeight)) std::cout << "Couldn't initialize FBO!" << std::endl;
-	//Change if you want full scene culling. It now only culls for fbo pass
-	glCullFace(GL_FRONT);
+	if(!m_gbuffer.Init(windowWidth, windowHeight)) std::cout << "Couldn't initialize FBO!" << std::endl;
 }
 
 void OpenGLContext::reshapeWindow(int w, int h){
@@ -120,7 +116,6 @@ void OpenGLContext::reshapeWindow(int w, int h){
 	windowHeight = h;
 	glViewport(0, 0, windowWidth, windowHeight);
 	ProjectionMatrix = glm::perspective(fov+zoom, (float)windowWidth/(float)windowHeight, 0.1f, 100.0f);
-	if(!m_ShadowMapFBO.Init(windowWidth, windowHeight)) std::cout << "Couldn't initialize FBO!" << std::endl;
 }
 
 void OpenGLContext::processScene(void){
@@ -155,36 +150,10 @@ void OpenGLContext::calcLightViewMatrix(void){
 }
 
 void OpenGLContext::fboPass(void){
-	glEnable(GL_CULL_FACE);
-	// glEnable(GL_POLYGON_OFFSET_FILL);
-	// glPolygonOffset(1.0, 3.0);
 
-	m_ShadowMapFBO.BindForWriting();
-
-	glClear(GL_DEPTH_BUFFER_BIT);
+	m_gbuffer.BindForWriting();
 	
-	glm::mat4 lightModelViewMatrix = lightViewMatrix * ModelMatrix;
-	glm::mat4 lightMVPMatrix = lightProjectionMatrix * lightModelViewMatrix;
-	
-	{
-		lightModelViewMatrix = glm::translate(lightModelViewMatrix, glm::vec3(0.0, 1.0, 0.0));
-		lightMVPMatrix = lightProjectionMatrix * lightModelViewMatrix;
-		glUniformMatrix4fv(MVPMatrixLocation, 1, GL_FALSE, &lightMVPMatrix[0][0]);
-		
-		mesh.draw();
-	}
-	
-	glBindFramebuffer(GL_FRAMEBUFFER, 0);
-	glDisable(GL_CULL_FACE);
-	// glDisable(GL_POLYGON_OFFSET_FILL);
-}
-
-void OpenGLContext::drawPass(void){
-
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-	
-	m_ShadowMapFBO.BindForReading(GL_TEXTURE0 + 1);
-	glUniform1i(m_ShadowMapLocation, 1);
 	
 	texture2->Bind(GL_TEXTURE0 + 0);
 	glUniform1i(samplerLocation, 0);
@@ -192,11 +161,6 @@ void OpenGLContext::drawPass(void){
 	glm::mat4 ModelViewMatrix = ViewMatrix * ModelMatrix;
 	glm::mat3 NormalMatrix = glm::mat3(glm::transpose(glm::inverse(ModelViewMatrix)));
 	glm::mat4 MVPMatrix = ProjectionMatrix * ModelViewMatrix;
-	glm::mat4 lightModelViewMatrix = lightViewMatrix * ModelMatrix;
-	glm::mat4 lightMVPMatrix = lightProjectionMatrix * lightModelViewMatrix;
-	
-	light[0].uploadMVP(lightMVPMatrix);
-	light[0].uploadDirection(ViewMatrix);
 	
 	glUniformMatrix4fv(MVPMatrixLocation, 1, GL_FALSE, &MVPMatrix[0][0]);
 	glUniformMatrix4fv(ModelViewMatrixLocation, 1, GL_FALSE, &ModelViewMatrix[0][0]);
@@ -207,10 +171,7 @@ void OpenGLContext::drawPass(void){
 	plane.draw();
 	{
 		ModelViewMatrix = glm::translate(ModelViewMatrix, glm::vec3(0.0, 1.0, 0.0));
-		lightModelViewMatrix = glm::translate(lightModelViewMatrix, glm::vec3(0.0, 1.0, 0.0));
 		MVPMatrix = ProjectionMatrix * ModelViewMatrix;
-		lightMVPMatrix = lightProjectionMatrix * lightModelViewMatrix;
-		light[0].uploadMVP(lightMVPMatrix);
 		glUniformMatrix4fv(MVPMatrixLocation, 1, GL_FALSE, &MVPMatrix[0][0]);
 		glUniformMatrix4fv(ModelViewMatrixLocation, 1, GL_FALSE, &ModelViewMatrix[0][0]);
 		
@@ -219,14 +180,40 @@ void OpenGLContext::drawPass(void){
 	}
 }
 
+void OpenGLContext::drawPass(void){
+	
+	glBindFramebuffer(GL_DRAW_FRAMEBUFFER, 0);
+
+	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+	
+	m_gbuffer.BindForReading();
+	glDrawBuffer(GL_BACK);
+	
+	GLint HalfWidth = (GLint)(windowWidth / 2.0f);
+    GLint HalfHeight = (GLint)(windowHeight / 2.0f);
+
+    m_gbuffer.SetReadBuffer(CGBuffer::GBUFF_TEXTURE_TYPE_POSITION);
+    glBlitFramebuffer(0, 0, windowWidth, windowHeight, 0, 0, HalfWidth, HalfHeight, GL_COLOR_BUFFER_BIT, GL_LINEAR);
+
+    m_gbuffer.SetReadBuffer(CGBuffer::GBUFF_TEXTURE_TYPE_DIFFUSE);
+    glBlitFramebuffer(0, 0, windowWidth, windowHeight, 0, HalfHeight, HalfWidth, windowHeight, GL_COLOR_BUFFER_BIT, GL_LINEAR);
+
+    m_gbuffer.SetReadBuffer(CGBuffer::GBUFF_TEXTURE_TYPE_NORMAL);
+    glBlitFramebuffer(0, 0, windowWidth, windowHeight, HalfWidth, HalfHeight, windowWidth, windowHeight, GL_COLOR_BUFFER_BIT, GL_LINEAR);
+
+    m_gbuffer.SetReadBuffer(CGBuffer::GBUFF_TEXTURE_TYPE_TEXCOORD);
+    glBlitFramebuffer(0, 0, windowWidth, windowHeight, HalfWidth, 0, windowWidth, HalfHeight, GL_COLOR_BUFFER_BIT, GL_LINEAR); 
+	
+}
+
 void OpenGLContext::renderScene(void){
 	
 	shader->bind();
 	{
 		fboPass();
-		drawPass();
 	}
 	shader->unbind();
+	drawPass();
 	
 	glutSwapBuffers();
 }

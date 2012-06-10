@@ -9,7 +9,7 @@
 #include "mesh.h"
 #include "camera.h"
 #include "texture.h"
-#include "shadowmap_FBO.h"
+#include "g-buffer.h"
 #include "light.h"
 
 class OpenGLContext{
@@ -66,7 +66,7 @@ private:
 	Texture *texture0;
 	Texture *texture1;
 	Texture *texture2;
-	CShadowMapFBO m_ShadowMapFBO;
+	CGBuffer m_gbuffer;
 };
 
 

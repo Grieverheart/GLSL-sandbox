@@ -16,7 +16,7 @@ public:
 	~CGBuffer(void);
 	bool Init(unsigned int WindowWidth, unsigned int WindowHeght);
 	void BindForWriting(void);
-	void BindForReading(GLenum TextureUnit);
+	void BindForReading(void);
 	void SetReadBuffer(GBUFF_TEXTURE_TYPE TextureType);
 private:
 	GLuint m_fbo;
