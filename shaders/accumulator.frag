@@ -4,18 +4,15 @@ struct Light{
 	vec3 direction;
 };
 
-uniform ivec2 ScreenSize;
 uniform Light light;
 
 uniform sampler2D PositionMap;
 uniform sampler2D ColorMap;
 uniform sampler2D NormalMap;
 
-out vec4 out_Color;
+smooth in vec2 pass_TexCoord;
 
-vec2 CalcTexCoord(void){
-	return gl_FragCoord.xy / ScreenSize;
-}
+out vec4 out_Color;
 
 vec4 CalcLight(vec3 position, vec3 normal){
 	
@@ -40,7 +37,7 @@ vec4 CalcLight(vec3 position, vec3 normal){
 
 void main(void){
 
-	vec2 TexCoord = CalcTexCoord();
+	vec2 TexCoord = pass_TexCoord;
 	vec3 Position = texture(PositionMap, TexCoord).xyz;
 	vec3 Color = texture(ColorMap, TexCoord).xyz;
 	vec3 Normal = normalize(texture(NormalMap, TexCoord).xyz);

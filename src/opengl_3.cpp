@@ -73,7 +73,8 @@ bool OpenGLContext::create30Context(void){
 	glGetIntegerv(GL_MINOR_VERSION, &glVersion[1]);
 	
 	std::cout << "Using OpenGL: " << glVersion[0] << "." << glVersion[1] << std::endl;
-	
+	std::cout << "Renderer used: " << glGetString(GL_RENDERER) << std::endl;
+	std::cout << "Shading Language: " << glGetString(GL_SHADING_LANGUAGE_VERSION) << std::endl;
 	return true; // Success, return true
 }
 
@@ -99,7 +100,6 @@ void OpenGLContext::setupScene(int argc, char *argv[]){
 	}
 	sh_gbuffer->bind();
 	
-	ScreenSizeLocation = glGetUniformLocation(sh_accumulator->id(), "ScreenSize");
 	PositionMapLocation = glGetUniformLocation(sh_accumulator->id(), "PositionMap");
 	ColorMapLocation = glGetUniformLocation(sh_accumulator->id(), "ColorMap");
 	NormalMapLocation = glGetUniformLocation(sh_accumulator->id(), "NormalMap");
@@ -116,7 +116,7 @@ void OpenGLContext::setupScene(int argc, char *argv[]){
 	if(
 		MVPMatrixLocation == -1 || ModelViewMatrixLocation == -1 || NormalMatrixLocation == -1 ||
 		PositionMapLocation == -1	|| ColorMapLocation == -1 || NormalMapLocation == -1 ||
-		ScreenSizeLocation == -1 || samplerLocation == -1
+		samplerLocation == -1
 	){ std::cout << "Unable to bind uniform" << std::endl; }
 	
 	ProjectionMatrix = glm::perspective(fov+zoom, (float)windowWidth/(float)windowHeight, 0.1f, 100.0f);
@@ -223,8 +223,6 @@ void OpenGLContext::drawPass(void){
 	sh_accumulator->bind();
 	{
 		light[0].uploadDirection(ViewMatrix);
-		glm::ivec2 screenSize = getScreen();
-		glUniform2iv(ScreenSizeLocation, 1, &screenSize[0]);
 		full_quad.draw();
 	}
 	sh_accumulator->unbind();

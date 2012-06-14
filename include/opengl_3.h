@@ -56,7 +56,6 @@ private:
 	int PositionMapLocation;
 	int ColorMapLocation;
 	int NormalMapLocation;
-	int ScreenSizeLocation;
 
 	bool redisplay;
 	
