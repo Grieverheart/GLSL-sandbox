@@ -14,6 +14,6 @@ layout(location = 3) out vec3 outTexCoord;
 void main(void){
 	outPosition = pass_Position;
 	outDiffuse = texture(inSampler, TexCoord).xyz;
-	outNormal = normalize(pass_Normal);
+	outNormal = pass_Normal;
 	outTexCoord = vec3(TexCoord, 0.0);
 }

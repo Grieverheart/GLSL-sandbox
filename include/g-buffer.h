@@ -14,7 +14,7 @@ public:
 	};
 	CGBuffer(void);
 	~CGBuffer(void);
-	bool Init(unsigned int WindowWidth, unsigned int WindowHeght);
+	bool Init(unsigned int WindowWidth, unsigned int WindowHeight);
 	void BindForWriting(void);
 	void BindForReading(void);
 	void SetReadBuffer(GBUFF_TEXTURE_TYPE TextureType);

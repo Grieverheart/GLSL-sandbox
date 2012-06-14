@@ -39,22 +39,24 @@ private:
 	int windowWidth;	//Store the width of the window
 	int windowHeight;	//Store the height of the window
 	float fov, zoom;
-	Shader *shader; // GLSL Shader
 	
 	glm::mat4 ProjectionMatrix;
 	glm::mat4 ViewMatrix;
 	glm::mat4 ModelMatrix;
-	glm::mat4 lightViewMatrix;
 	glm::mat4 IdentityMatrix;
-	glm::mat4 lightProjectionMatrix;
+	// glm::mat4 lightProjectionMatrix;
+	// glm::mat4 lightViewMatrix;
 	
-	void calcLightViewMatrix(void);
+	// void calcLightViewMatrix(void);
 
 	int ModelViewMatrixLocation;
 	int NormalMatrixLocation;
 	int MVPMatrixLocation;
 	int samplerLocation;
-	int m_ShadowMapLocation;
+	int PositionMapLocation;
+	int ColorMapLocation;
+	int NormalMapLocation;
+	int ScreenSizeLocation;
 
 	bool redisplay;
 	
@@ -62,11 +64,14 @@ private:
 	CMesh mesh;
 	CMesh plane;
 	CMesh skybox;
+	CMesh full_quad;
 	std::vector<CLight> light;
 	Texture *texture0;
 	Texture *texture1;
 	Texture *texture2;
 	CGBuffer m_gbuffer;
+	Shader *sh_gbuffer; // GLSL Shader
+	Shader *sh_accumulator;
 };
 
 
