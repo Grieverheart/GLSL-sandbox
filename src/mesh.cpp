@@ -36,13 +36,12 @@ void CMesh::upload(GLuint shaderID){
 	scaleLocation = glGetUniformLocation(shaderID,"scale");
 	
 	if(scaleLocation == -1){
-		std::cout << "Unable to bind uniform" << std::endl;
+		std::cout << "Unable to bind scale uniform" << std::endl;
 	}
 }
 
 void CMesh::draw(void){
 	glUniform1fv(scaleLocation, 1, &scale);
-	
 	glBindVertexArray(vaoID); 
 	glDrawArrays(GL_TRIANGLES, 0, vertices.size());
 	glBindVertexArray(0);

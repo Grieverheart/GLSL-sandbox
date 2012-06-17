@@ -39,6 +39,7 @@ private:
 	int windowWidth;	//Store the width of the window
 	int windowHeight;	//Store the height of the window
 	float fov, zoom;
+	float znear,zfar;
 	
 	glm::mat4 ProjectionMatrix;
 	glm::mat4 ViewMatrix;
@@ -53,9 +54,11 @@ private:
 	int NormalMatrixLocation;
 	int MVPMatrixLocation;
 	int samplerLocation;
-	int PositionMapLocation;
+	int DepthMapLocation;
 	int ColorMapLocation;
 	int NormalMapLocation;
+	int projABLocation;	// projA and projB are two uniforms needed to convert the post projective depth to the linear depth
+	int invProjMatrixLocation;
 
 	bool redisplay;
 	

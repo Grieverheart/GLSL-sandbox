@@ -6,13 +6,22 @@ struct Light{
 
 uniform Light light;
 
-uniform sampler2D PositionMap;
+uniform sampler2D DepthMap;
 uniform sampler2D ColorMap;
 uniform sampler2D NormalMap;
 
+uniform vec2 projAB;
+
 smooth in vec2 pass_TexCoord;
+smooth in vec3 viewRay;
 
 out vec4 out_Color;
+
+vec3 CalcPosition(void){
+	float depth = texture(DepthMap, pass_TexCoord).r;
+	float linearDepth = projAB.y / (depth - projAB.x);
+	return linearDepth * viewRay;
+}
 
 vec4 CalcLight(vec3 position, vec3 normal){
 	
@@ -38,7 +47,7 @@ vec4 CalcLight(vec3 position, vec3 normal){
 void main(void){
 
 	vec2 TexCoord = pass_TexCoord;
-	vec3 Position = texture(PositionMap, TexCoord).xyz;
+	vec3 Position = CalcPosition();
 	vec3 Color = texture(ColorMap, TexCoord).xyz;
 	vec3 Normal = normalize(texture(NormalMap, TexCoord).xyz);
 	

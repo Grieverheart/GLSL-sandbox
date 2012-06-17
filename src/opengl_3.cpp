@@ -11,6 +11,8 @@ OpenGLContext::OpenGLContext(void):
 	/////////////////////////////////////////////////
 	zoom = 0.0f;
 	fov = 60.0f;
+	znear = 0.1f;
+	zfar = 100.0f;
 	redisplay = false;
 	light.push_back(CLight(glm::vec3(-7.0, 7.0, 0.0), glm::vec3(1.0, -1.0, 0.0)));
 	texture0 = new Texture(GL_TEXTURE_2D, "Textures/crate.bmp");
@@ -100,28 +102,37 @@ void OpenGLContext::setupScene(int argc, char *argv[]){
 	}
 	sh_gbuffer->bind();
 	
-	PositionMapLocation = glGetUniformLocation(sh_accumulator->id(), "PositionMap");
+	DepthMapLocation = glGetUniformLocation(sh_accumulator->id(), "DepthMap");
 	ColorMapLocation = glGetUniformLocation(sh_accumulator->id(), "ColorMap");
 	NormalMapLocation = glGetUniformLocation(sh_accumulator->id(), "NormalMap");
 	if(!light[0].Init(sh_accumulator->id())) std::cout << "Cannot bind light uniform" << std::endl;
+	projABLocation = glGetUniformLocation(sh_accumulator->id(), "projAB");
+	invProjMatrixLocation = glGetUniformLocation(sh_accumulator->id(), "invProjMatrix");
+	
+	
+	if(
+		MVPMatrixLocation == -1	||	NormalMatrixLocation == -1	||	invProjMatrixLocation == -1	||
+		DepthMapLocation == -1	||	ColorMapLocation == -1		||	NormalMapLocation == -1		||
+		samplerLocation == -1	||	DepthMapLocation == -1		||	projABLocation == -1
+	){ std::cout << "Unable to bind uniform" << std::endl; }
+	
+	ProjectionMatrix = glm::perspective(fov+zoom, (float)windowWidth/(float)windowHeight, znear, zfar);
+	ViewMatrix = camera.getView();
+	ModelMatrix = glm::mat4(1.0);
 	
 	sh_accumulator->bind();
 	{
-		glUniform1i(PositionMapLocation, 0);
-		glUniform1i(ColorMapLocation, 1);
-		glUniform1i(NormalMapLocation, 2);
+		glUniform1i(ColorMapLocation, 0);
+		glUniform1i(NormalMapLocation, 1);
+		glUniform1i(DepthMapLocation, 2);
+		float projA = (zfar + znear)/ (zfar - znear);
+		float projB = 2.0 * zfar * znear / (zfar - znear);
+		glm::vec2 projAB = glm::vec2(projA, projB);
+		glUniform2fv(projABLocation, 1, &projAB[0]);
+		glm::mat4 invProjMatrix = glm::inverse(ProjectionMatrix);
+		glUniformMatrix4fv(invProjMatrixLocation, 1, GL_FALSE, &invProjMatrix[0][0]);
 	}
 	sh_accumulator->unbind();
-	
-	if(
-		MVPMatrixLocation == -1 || ModelViewMatrixLocation == -1 || NormalMatrixLocation == -1 ||
-		PositionMapLocation == -1	|| ColorMapLocation == -1 || NormalMapLocation == -1 ||
-		samplerLocation == -1
-	){ std::cout << "Unable to bind uniform" << std::endl; }
-	
-	ProjectionMatrix = glm::perspective(fov+zoom, (float)windowWidth/(float)windowHeight, 0.1f, 100.0f);
-	ViewMatrix = camera.getView();
-	ModelMatrix = glm::mat4(1.0);
 	
 	objparser.parse("obj/cube-tex.obj", &mesh, "flat");
 	mesh.upload(sh_gbuffer->id());
@@ -142,7 +153,7 @@ void OpenGLContext::reshapeWindow(int w, int h){
 	windowWidth = w;
 	windowHeight = h;
 	glViewport(0, 0, windowWidth, windowHeight);
-	ProjectionMatrix = glm::perspective(fov+zoom, (float)windowWidth/(float)windowHeight, 0.1f, 100.0f);
+	ProjectionMatrix = glm::perspective(fov+zoom, (float)windowWidth/(float)windowHeight, znear, zfar);
 }
 
 void OpenGLContext::processScene(void){
@@ -151,7 +162,7 @@ void OpenGLContext::processScene(void){
 	if(this_time - last_time >= 1.0f/61.0f){
 		redisplay = true;
 		last_time = this_time;
-		ProjectionMatrix = glm::perspective(fov+zoom, (float)windowWidth/(float)windowHeight, 0.1f, 100.0f);
+		ProjectionMatrix = glm::perspective(fov+zoom, (float)windowWidth/(float)windowHeight, znear, zfar);
 		ViewMatrix = camera.getView();
 		// calcLightViewMatrix();
 	}
