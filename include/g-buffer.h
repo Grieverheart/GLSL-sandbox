@@ -15,6 +15,7 @@ public:
 	bool Init(unsigned int WindowWidth, unsigned int WindowHeight);
 	void BindForWriting(void);
 	void BindForReading(void);
+	void BindForSSAO(void);
 	void SetReadBuffer(GBUFF_TEXTURE_TYPE TextureType);
 private:
 	GLuint m_fbo;

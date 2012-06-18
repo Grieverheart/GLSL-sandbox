@@ -1,6 +1,5 @@
 #version 330 core
 
-uniform mat4 ModelViewMatrix;
 uniform mat3 NormalMatrix;
 uniform mat4 MVPMatrix;
 // uniform mat4 lightMVP;

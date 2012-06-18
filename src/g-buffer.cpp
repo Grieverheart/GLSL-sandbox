@@ -79,6 +79,14 @@ void CGBuffer::BindForReading(void){
 	glBindTexture(GL_TEXTURE_2D, m_depthTexture);
 }
 
+void CGBuffer::BindForSSAO(void){
+	glBindFramebuffer(GL_DRAW_FRAMEBUFFER, 0);
+	glActiveTexture(GL_TEXTURE0);
+	glBindTexture(GL_TEXTURE_2D, m_textures[GBUFF_TEXTURE_TYPE_NORMAL]);
+	glActiveTexture(GL_TEXTURE0 + 1);
+	glBindTexture(GL_TEXTURE_2D, m_depthTexture);
+}
+
 void CGBuffer::SetReadBuffer(GBUFF_TEXTURE_TYPE TextureType){
 	glReadBuffer(GL_COLOR_ATTACHMENT0 + TextureType);
 }

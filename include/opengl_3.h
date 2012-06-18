@@ -11,6 +11,7 @@
 #include "texture.h"
 #include "g-buffer.h"
 #include "light.h"
+#include "ssao.h"
 
 class OpenGLContext{
 public:
@@ -23,6 +24,7 @@ public:
 	void processScene(void);
 	void fboPass(void);
 	void drawPass(void);
+	void ssaoPass(void);
 	
 	void toggleState(std::string state);
 	bool getState(std::string state);
@@ -50,7 +52,6 @@ private:
 	
 	// void calcLightViewMatrix(void);
 
-	int ModelViewMatrixLocation;
 	int NormalMatrixLocation;
 	int MVPMatrixLocation;
 	int samplerLocation;
@@ -59,6 +60,10 @@ private:
 	int NormalMapLocation;
 	int projABLocation;	// projA and projB are two uniforms needed to convert the post projective depth to the linear depth
 	int invProjMatrixLocation;
+	int ssaoProjMatrixLocation;
+	int ssaoDepthMapLocation;
+	int ssaoNormalMapLocation;
+	int ssaoprojABLocation;
 
 	bool redisplay;
 	
@@ -72,8 +77,11 @@ private:
 	Texture *texture1;
 	Texture *texture2;
 	CGBuffer m_gbuffer;
+	Cssao m_ssao;
+	
 	Shader *sh_gbuffer; // GLSL Shader
 	Shader *sh_accumulator;
+	Shader *sh_ssao;
 };
 
 

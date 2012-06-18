@@ -35,9 +35,9 @@ void CMesh::upload(GLuint shaderID){
 	
 	scaleLocation = glGetUniformLocation(shaderID,"scale");
 	
-	if(scaleLocation == -1){
-		std::cout << "Unable to bind scale uniform" << std::endl;
-	}
+	// if(scaleLocation == -1){
+		// std::cout << "Unable to bind scale uniform" << std::endl;
+	// }
 }
 
 void CMesh::draw(void){
