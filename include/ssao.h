@@ -11,6 +11,8 @@ public:
 	bool Init(unsigned int WindowWidth, unsigned int WindowHeight, unsigned int shader_id);
 	void BindNoise(void);
 	void UploadUniforms(void);
+	void BindForWriting(void);
+	void BindForReading(void);
 	
 private:
 	void CreateKernel(void);
@@ -21,6 +23,8 @@ private:
 	unsigned int m_noise_scale;
 	unsigned int m_shader_id;
 	GLuint m_noise_texture;
+	GLuint m_ssaoTexture;
+	GLuint m_fbo;
 	float m_RADIUS;
 	
 	int m_noiseSamplerLocation;

@@ -2,6 +2,7 @@
 
 OpenGLContext::OpenGLContext(void):
 	mesh(1.0f),
+	sphere(1.0f),
 	plane(50.),
 	skybox(50.0f),
 	full_quad(1.0)
@@ -91,6 +92,7 @@ void OpenGLContext::setupScene(int argc, char *argv[]){
 	sh_gbuffer = new Shader("shaders/gbuffer.vert", "shaders/gbuffer.frag");
 	sh_accumulator = new Shader("shaders/accumulator.vert", "shaders/accumulator.frag");
 	sh_ssao = new Shader("shaders/ssao.vert", "shaders/ssao.frag");
+	sh_blur = new Shader("shaders/blur.vert", "shaders/blur.frag");
 	
 	// Gbuffer Uniform Locations
 	MVPMatrixLocation = glGetUniformLocation(sh_gbuffer->id(),"MVPMatrix");
@@ -121,13 +123,22 @@ void OpenGLContext::setupScene(int argc, char *argv[]){
 	ssaoDepthMapLocation = glGetUniformLocation(sh_ssao->id(), "DepthMap");
 	ssaoNormalMapLocation = glGetUniformLocation(sh_ssao->id(), "NormalMap");
 	ssaoprojABLocation = glGetUniformLocation(sh_ssao->id(), "projAB");
+	ssaoinvProjMatrixLocation = glGetUniformLocation(sh_ssao->id(), "invProjMatrix");
 	if(!m_ssao.Init(windowWidth, windowHeight, sh_ssao->id())) std::cout << "Couldn't initialize SSAO!" << std::endl;
 	
 	if(
 		ssaoProjMatrixLocation == -1	||	ssaoDepthMapLocation == -1	||
-		ssaoNormalMapLocation == -1		||	ssaoprojABLocation == -1
+		ssaoNormalMapLocation == -1		||	ssaoprojABLocation == -1	||
+		ssaoinvProjMatrixLocation == -1
 	){ std::cout << "Unable to bind SSAO main uniforms" << std::endl; }
 	
+	// Blur Uniform Locations
+	aoSamplerLocation = glGetUniformLocation(sh_blur->id(), "aoSampler");
+	texelSizeLocation = glGetUniformLocation(sh_blur->id(), "TEXEL_SIZE");
+	
+	if(
+		aoSamplerLocation == -1	||	texelSizeLocation == -1
+	){ std::cout << "Unable to bind blur uniforms" << std::endl; }
 	
 	ProjectionMatrix = glm::perspective(fov+zoom, (float)windowWidth/(float)windowHeight, znear, zfar);
 	ViewMatrix = camera.getView();
@@ -142,6 +153,7 @@ void OpenGLContext::setupScene(int argc, char *argv[]){
 	
 	// Accumulator Uniforms
 	glm::vec2 projAB;
+	glm::mat4 invProjMatrix;
 	
 	sh_accumulator->bind();
 	{
@@ -152,7 +164,7 @@ void OpenGLContext::setupScene(int argc, char *argv[]){
 		float projB = 2.0 * zfar * znear / (zfar - znear);
 		projAB = glm::vec2(projA, projB);
 		glUniform2fv(projABLocation, 1, &projAB[0]);
-		glm::mat4 invProjMatrix = glm::inverse(ProjectionMatrix);
+		invProjMatrix = glm::inverse(ProjectionMatrix);
 		glUniformMatrix4fv(invProjMatrixLocation, 1, GL_FALSE, &invProjMatrix[0][0]);
 	}
 	sh_accumulator->unbind();
@@ -165,17 +177,29 @@ void OpenGLContext::setupScene(int argc, char *argv[]){
 		glUniform1i(ssaoDepthMapLocation, 1);
 		glUniform2fv(ssaoprojABLocation, 1, &projAB[0]);
 		glUniformMatrix4fv(ssaoProjMatrixLocation, 1, GL_FALSE, &ProjectionMatrix[0][0]);
+		glUniformMatrix4fv(ssaoinvProjMatrixLocation, 1, GL_FALSE, &invProjMatrix[0][0]);
 		
 	}
 	sh_ssao->unbind();
 	
-	objparser.parse("obj/cube-tex.obj", &mesh, "flat");
+	// Blur Uniforms
+	sh_blur->bind();
+	{
+		glm::vec2 texel_size = glm::vec2(1.0 / windowWidth, 1.0 / windowHeight);
+		glUniform2fv(texelSizeLocation, 1, &texel_size[0]);
+		glUniform1i(aoSamplerLocation, 0);
+	}
+	sh_blur->unbind();
+	
+	objparser.parse("obj/cube.obj", &mesh, "flat");
 	mesh.upload(sh_gbuffer->id());
+	objparser.parse("obj/sphere.obj", &sphere, "smooth");
+	sphere.upload(sh_gbuffer->id());
 	objparser.parse("obj/plane.obj", &plane, "flat");
 	plane.upload(sh_gbuffer->id());
 	objparser.parse("obj/full_quad.obj", &full_quad, "flat");
 	full_quad.upload(sh_accumulator->id());
-	objparser.parse("obj/cube-tex_inv.obj", &skybox, "flat");
+	objparser.parse("obj/cube-tex_inv.obj", &skybox, "smooth");
 	skybox.upload(sh_gbuffer->id());
 	
 	if(!texture0->Load()) std::cout << "Couldn't load texture!" << std::endl;
@@ -234,7 +258,7 @@ void OpenGLContext::fboPass(void){
 		texture2->Bind(GL_TEXTURE0 + 0);
 		
 		glm::mat4 ModelViewMatrix = ViewMatrix * ModelMatrix;
-		glm::mat3 NormalMatrix = glm::mat3(glm::transpose(glm::inverse(ModelViewMatrix)));
+		glm::mat3 NormalMatrix = glm::transpose(glm::inverse(glm::mat3(ModelViewMatrix)));
 		glm::mat4 MVPMatrix = ProjectionMatrix * ModelViewMatrix;
 		
 		glUniformMatrix4fv(MVPMatrixLocation, 1, GL_FALSE, &MVPMatrix[0][0]);
@@ -250,6 +274,12 @@ void OpenGLContext::fboPass(void){
 			
 			texture0->Bind(GL_TEXTURE0 + 0);
 			mesh.draw();
+			{
+				ModelViewMatrix = glm::translate(ModelViewMatrix, glm::vec3(1.7, 0.0, 0.5));
+				MVPMatrix = ProjectionMatrix * ModelViewMatrix;
+				glUniformMatrix4fv(MVPMatrixLocation, 1, GL_FALSE, &MVPMatrix[0][0]);
+				sphere.draw();
+			}
 		}
 	}
 	sh_gbuffer->unbind();
@@ -262,14 +292,25 @@ void OpenGLContext::ssaoPass(void){
 	glDisable(GL_DEPTH_TEST);
 	glDepthMask(GL_FALSE);
 	m_gbuffer.BindForSSAO();
-	glClear(GL_COLOR_BUFFER_BIT);
 	m_ssao.BindNoise();
+	m_ssao.BindForWriting();
+	glClear(GL_COLOR_BUFFER_BIT);
 	
 	sh_ssao->bind();
 	{
 		full_quad.draw();
 	}
 	sh_ssao->unbind();
+	
+	m_ssao.BindForReading();
+	glClear(GL_COLOR_BUFFER_BIT);
+	m_gbuffer.BindForWriting();
+	
+	sh_blur->bind();
+	{
+		full_quad.draw();
+	}
+	sh_blur->unbind();
 	
 	glDepthMask(GL_TRUE);
 	glEnable(GL_DEPTH_TEST);
@@ -296,7 +337,7 @@ void OpenGLContext::renderScene(void){
 	
 	fboPass();
 	ssaoPass();
-	// drawPass();
+	drawPass();
 	
 	glutSwapBuffers();
 }

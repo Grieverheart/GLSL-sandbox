@@ -64,11 +64,15 @@ private:
 	int ssaoDepthMapLocation;
 	int ssaoNormalMapLocation;
 	int ssaoprojABLocation;
+	int ssaoinvProjMatrixLocation;
+	int aoSamplerLocation;
+	int texelSizeLocation;
 
 	bool redisplay;
 	
 	CObjParser objparser;
 	CMesh mesh;
+	CMesh sphere;
 	CMesh plane;
 	CMesh skybox;
 	CMesh full_quad;
@@ -82,6 +86,7 @@ private:
 	Shader *sh_gbuffer; // GLSL Shader
 	Shader *sh_accumulator;
 	Shader *sh_ssao;
+	Shader *sh_blur;
 };
 
 

@@ -10,15 +10,17 @@ uniform vec3 kernel[16];
 uniform float RADIUS;
 uniform mat4 projectionMatrix;
 
-smooth in vec2 pass_TexCoord;
+noperspective in vec2 pass_TexCoord;
 smooth in vec3 viewRay;
 
-out vec4 out_Color;
+out float out_AO;
 
 vec3 CalcPosition(void){
 	float depth = texture(DepthMap, pass_TexCoord).r;
 	float linearDepth = projAB.y / (depth - projAB.x);
-	return linearDepth * viewRay;
+	vec3 ray = normalize(viewRay);
+	ray = ray / ray.z;
+	return linearDepth * ray;
 }
 
 mat3 CalcRMatrix(vec3 normal, vec2 texcoord){
@@ -53,10 +55,8 @@ void main(void){
 		// Get sample depth
 		float sample_depth = texture(DepthMap, offset.xy).r;
 		if(abs(Position.z - sample_depth) < RADIUS){
-			occlusion += (sample_depth <= sample.z ? 1.0 : 0.0);
+			occlusion += (sample_depth <= sample.z) ? 1.0 : 0.0;
 		}
-		occlusion = 1.0 - (occlusion / kernelSize);
 	}
-	
-	out_Color = vec4(vec3(occlusion), 1.0);
+	out_AO = 1.0 - (occlusion / kernelSize);
 }

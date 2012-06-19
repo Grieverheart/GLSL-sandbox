@@ -33,7 +33,7 @@ bool CGBuffer::Init(unsigned int WindowWidth, unsigned int WindowHeight){
 	//prepare gbuffer
 	for(unsigned int i = 0; i < array_size; i++){
 		glBindTexture(GL_TEXTURE_2D, m_textures[i]);
-		if(i == GBUFF_TEXTURE_TYPE_NORMAL) glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB16F, WindowWidth, WindowHeight, 0, GL_RGB, GL_FLOAT, NULL);
+		if(i == GBUFF_TEXTURE_TYPE_NORMAL) glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA16F, WindowWidth, WindowHeight, 0, GL_RGBA, GL_FLOAT, NULL);
 		else if(i == GBUFF_TEXTURE_TYPE_DIFFUSE) glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB8, WindowWidth, WindowHeight, 0, GL_RGB, GL_FLOAT, NULL);
 		else{
 			std::cout << "Error in FBO initialization" << std::endl;
@@ -81,7 +81,7 @@ void CGBuffer::BindForReading(void){
 
 void CGBuffer::BindForSSAO(void){
 	glBindFramebuffer(GL_DRAW_FRAMEBUFFER, 0);
-	glActiveTexture(GL_TEXTURE0);
+	glActiveTexture(GL_TEXTURE0 + 0);
 	glBindTexture(GL_TEXTURE_2D, m_textures[GBUFF_TEXTURE_TYPE_NORMAL]);
 	glActiveTexture(GL_TEXTURE0 + 1);
 	glBindTexture(GL_TEXTURE_2D, m_depthTexture);

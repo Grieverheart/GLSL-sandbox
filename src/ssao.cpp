@@ -13,10 +13,10 @@ static inline float lerp(float start, float end, float perc){
 }
 
 Cssao::Cssao(void){
-	srand(time(NULL));
+	srand(1);
 	m_kernel_size = 16;
-	m_noise_size = 6;
-	m_RADIUS = 1.2f;
+	m_noise_size = 4;
+	m_RADIUS = 5.45f;
 }
 
 Cssao::~Cssao(void){
@@ -33,7 +33,7 @@ void Cssao::CreateKernel(void){
 			random(-1.0f, 1.0f),
 			random(0.0f, 1.0f)
 		);
-		float scale = (float)i / (float)m_kernel_size;
+		float scale = (float)(i + 1) / (float)m_kernel_size;
 		scale = lerp(0.1f, 1.0f, scale * scale);
 		m_kernel[i] *= scale;
 	}
@@ -79,7 +79,44 @@ bool Cssao::Init(unsigned int WindowWidth, unsigned int WindowHeight, unsigned i
 	){
 		std::cout << "Couldn't bind SSAO uniforms" << std::endl;
 	}
+	
+	//Create FBO
+	glGenFramebuffers(1, &m_fbo);
+	glBindFramebuffer(GL_DRAW_FRAMEBUFFER, m_fbo);
+	
+	glGenTextures(1, &m_ssaoTexture);
+	glBindTexture(GL_TEXTURE_2D, m_ssaoTexture);
+	glTexImage2D(GL_TEXTURE_2D, 0, GL_R16F, WindowWidth, WindowHeight, 0, GL_RED, GL_FLOAT, NULL);
+	glFramebufferTexture2D(GL_DRAW_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, m_ssaoTexture, 0);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+	
+	GLenum DrawBuffers[] = {GL_COLOR_ATTACHMENT0};
+	glDrawBuffers(1, DrawBuffers);
+	
+	GLenum Status = glCheckFramebufferStatus(GL_FRAMEBUFFER);
+	
+	if(Status != GL_FRAMEBUFFER_COMPLETE){
+		std::cout << "FB error, status 0x" << std::hex << Status << std::endl;
+		return false;
+	}
+	
+	//Restore default framebuffer
+	glBindFramebuffer(GL_DRAW_FRAMEBUFFER, 0);
+	
 	return true;
+}
+
+void Cssao::BindForWriting(void){
+	glBindFramebuffer(GL_DRAW_FRAMEBUFFER, m_fbo);
+}
+
+void Cssao::BindForReading(void){
+	glBindFramebuffer(GL_DRAW_FRAMEBUFFER, 0);
+	glActiveTexture(GL_TEXTURE0 + 0);
+	glBindTexture(GL_TEXTURE_2D, m_ssaoTexture);
 }
 
 void Cssao::UploadUniforms(void){

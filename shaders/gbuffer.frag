@@ -10,5 +10,5 @@ layout(location = 1) out vec3 outNormal;
 
 void main(void){
 	outDiffuse = texture(inSampler, TexCoord).xyz;
-	outNormal = pass_Normal;
+	outNormal = normalize(pass_Normal);
 }
