@@ -5,7 +5,7 @@ uniform vec2 TEXEL_SIZE; // x = 1/res x, y = 1/res y
 
 noperspective in vec2 TexCoord;
 
-out vec4 out_AO;
+layout(location = 0) out vec4 out_AO;
 
 void main(void){
 	float result = 0.0;

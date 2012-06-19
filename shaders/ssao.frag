@@ -1,8 +1,8 @@
 #version 330 core
 
 uniform sampler2D DepthMap;
-uniform sampler2D noise;
 uniform sampler2D NormalMap;
+uniform sampler2D noise;
 
 uniform vec2 projAB;
 uniform ivec3 noiseScale_kernelSize;
@@ -13,7 +13,7 @@ uniform mat4 projectionMatrix;
 noperspective in vec2 pass_TexCoord;
 smooth in vec3 viewRay;
 
-out float out_AO;
+layout(location = 0) out float out_AO;
 
 vec3 CalcPosition(void){
 	float depth = texture(DepthMap, pass_TexCoord).r;
@@ -54,9 +54,9 @@ void main(void){
 		offset.xy = offset.xy * 0.5 + 0.5;
 		// Get sample depth
 		float sample_depth = texture(DepthMap, offset.xy).r;
-		if(abs(Position.z - sample_depth) < RADIUS){
+		// if(abs(Position.z - sample_depth) < RADIUS){
 			occlusion += (sample_depth <= sample.z) ? 1.0 : 0.0;
-		}
+		// }
 	}
 	out_AO = 1.0 - (occlusion / kernelSize);
 }

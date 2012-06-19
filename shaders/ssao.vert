@@ -11,5 +11,5 @@ smooth out vec3 viewRay;
 void main(void){
 	pass_TexCoord = in_TexCoord;
 	viewRay = (invProjMatrix * vec4(in_Position, 1.0)).xyz;
-	gl_Position = mat4(1.0) * vec4(in_Position, 1.0);
+	gl_Position = vec4(in_Position, 1.0);
 }
