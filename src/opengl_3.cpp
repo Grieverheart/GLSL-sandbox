@@ -159,8 +159,8 @@ void OpenGLContext::setupScene(int argc, char *argv[]){
 		glUniform1i(ColorMapLocation, 0);
 		glUniform1i(NormalMapLocation, 1);
 		glUniform1i(DepthMapLocation, 2);
-		float projA = (zfar + znear)/ (zfar - znear);
-		float projB = 2.0 * zfar * znear / (zfar - znear);
+		float projA = zfar / (zfar - znear);
+		float projB = zfar * znear / (zfar - znear);
 		projAB = glm::vec2(projA, projB);
 		glUniform2fv(projABLocation, 1, &projAB[0]);
 		invProjMatrix = glm::inverse(ProjectionMatrix);
@@ -220,28 +220,8 @@ void OpenGLContext::processScene(void){
 		last_time = this_time;
 		ProjectionMatrix = glm::perspective(fov+zoom, (float)windowWidth/(float)windowHeight, znear, zfar);
 		ViewMatrix = camera.getView();
-		// calcLightViewMatrix();
 	}
 }
-
-// void OpenGLContext::calcLightViewMatrix(void){
-	// Calculate ViewMatrix
-	//// glm::vec3 light_position = light[0].getPosition();
-	// glm::vec3 light_direction = light[0].getDirection();
-	// glm::vec3 upVector(0.0,1.0,0.0);
-	// glm::vec3 sVector;
-	// sVector = glm::normalize(glm::cross(light_direction, upVector));
-	// upVector = glm::normalize(glm::cross(sVector, light_direction));
-	
-	// lightViewMatrix = glm::mat4(
-		// glm::vec4(sVector,glm::dot(-light_position,sVector)),
-		// glm::vec4(upVector,glm::dot(-light_position,upVector)),
-		// glm::vec4(-light_direction,glm::dot(light_direction,light_position)),
-		// glm::vec4(0.0,0.0,0.0,1.0)
-	// );
-	// lightViewMatrix = glm::transpose(lightViewMatrix);
-	// lightProjectionMatrix = glm::perspective(fov+zoom, (float)windowWidth/(float)windowHeight, 10.0f, 30.0f);
-// }
 
 void OpenGLContext::fboPass(void){
 

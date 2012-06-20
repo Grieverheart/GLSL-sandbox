@@ -47,10 +47,6 @@ private:
 	glm::mat4 ViewMatrix;
 	glm::mat4 ModelMatrix;
 	glm::mat4 IdentityMatrix;
-	// glm::mat4 lightProjectionMatrix;
-	// glm::mat4 lightViewMatrix;
-	
-	// void calcLightViewMatrix(void);
 
 	int NormalMatrixLocation;
 	int MVPMatrixLocation;
