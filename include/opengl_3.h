@@ -72,7 +72,6 @@ private:
 	
 	CObjParser objparser;
 	CMesh mesh;
-	CMesh sphere;
 	CMesh plane;
 	CMesh skybox;
 	CMesh full_quad;

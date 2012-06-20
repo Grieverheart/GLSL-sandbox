@@ -2,7 +2,6 @@
 
 OpenGLContext::OpenGLContext(void):
 	mesh(1.0f),
-	sphere(1.0f),
 	plane(50.),
 	skybox(50.0f),
 	full_quad(1.0)
@@ -191,15 +190,13 @@ void OpenGLContext::setupScene(int argc, char *argv[]){
 	}
 	sh_blur->unbind();
 	
-	objparser.parse("obj/cube.obj", &mesh, "flat");
+	objparser.parse("obj/cube-tex.obj", &mesh, "flat");
 	mesh.upload(sh_gbuffer->id());
-	objparser.parse("obj/sphere.obj", &sphere, "smooth");
-	sphere.upload(sh_gbuffer->id());
 	objparser.parse("obj/plane.obj", &plane, "flat");
 	plane.upload(sh_gbuffer->id());
 	objparser.parse("obj/full_quad.obj", &full_quad, "flat");
 	full_quad.upload(sh_accumulator->id());
-	objparser.parse("obj/cube-tex_inv.obj", &skybox, "smooth");
+	objparser.parse("obj/cube-tex_inv.obj", &skybox, "flat");
 	skybox.upload(sh_gbuffer->id());
 	
 	if(!texture0->Load()) std::cout << "Couldn't load texture!" << std::endl;
@@ -274,12 +271,6 @@ void OpenGLContext::fboPass(void){
 			
 			texture0->Bind(GL_TEXTURE0 + 0);
 			mesh.draw();
-			{
-				ModelViewMatrix = glm::translate(ModelViewMatrix, glm::vec3(1.7, 0.0, 0.5));
-				MVPMatrix = ProjectionMatrix * ModelViewMatrix;
-				glUniformMatrix4fv(MVPMatrixLocation, 1, GL_FALSE, &MVPMatrix[0][0]);
-				sphere.draw();
-			}
 		}
 	}
 	sh_gbuffer->unbind();

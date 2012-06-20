@@ -12,7 +12,7 @@ uniform sampler2D NormalMap;
 
 uniform vec2 projAB;
 
-smooth in vec2 pass_TexCoord;
+noperspective in vec2 pass_TexCoord;
 smooth in vec3 viewRay;
 
 out vec4 out_Color;
@@ -25,7 +25,7 @@ vec3 CalcPosition(void){
 	return linearDepth * ray;
 }
 
-vec3 CalcLight(vec3 position, vec3 normal, float occlusion){
+vec3 CalcLight(vec3 position, vec3 normal){
 	
 	vec3 DiffuseColor = vec3(0.0);
 	vec3 SpecularColor = vec3(0.0);
@@ -43,7 +43,7 @@ vec3 CalcLight(vec3 position, vec3 normal, float occlusion){
 		float fspecular = pow(specular, 128.0);
 		SpecularColor = fspecular * vec3(1.0);
 	}
-	return DiffuseColor + SpecularColor + vec3(0.7) * occlusion;
+	return DiffuseColor + SpecularColor + vec3(0.25);
 }
 
 void main(void){
@@ -54,5 +54,5 @@ void main(void){
 	float AO = texture(NormalMap, TexCoord).a;
 	vec3 Normal = normalize(texture(NormalMap, TexCoord).xyz);
 	
-	out_Color = vec4(Color * CalcLight(Position, Normal, AO), 1.0);
+	out_Color = vec4(Color * CalcLight(Position, Normal) * AO, 1.0);
 }

@@ -54,10 +54,10 @@ void main(void){
 		offset.xy = offset.xy * 0.5 + 0.5;
 		// Get sample depth
 		float sample_depth = texture(DepthMap, offset.xy).r;
-		float linearDepth = projAB.y / (sample_depth - projAB.x);
-		// if(abs(Position.z - linearDepth) < RADIUS){
-			occlusion += (linearDepth <= sample.z) ? 1.0 : 0.0;
-		// }
+		sample_depth = projAB.y / (sample_depth - projAB.x);
+		if(abs(Position.z - sample_depth) < RADIUS){
+			occlusion += (sample_depth > sample.z) ? 1.0 : 0.0;
+		}
 	}
-	out_AO = 1.0 - (occlusion / kernelSize);
+	out_AO = 1.0 - occlusion / kernelSize;
 }

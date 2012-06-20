@@ -16,7 +16,7 @@ Cssao::Cssao(void){
 	srand(1);
 	m_kernel_size = 16;
 	m_noise_size = 4;
-	m_RADIUS = 5.45f;
+	m_RADIUS = 4.25f;
 }
 
 Cssao::~Cssao(void){
@@ -53,7 +53,7 @@ void Cssao::CreateNoise(void){
 	
 	glGenTextures(1, &m_noise_texture);
 	glBindTexture(GL_TEXTURE_2D, m_noise_texture);
-	glTexImage2D(GL_TEXTURE_2D, 0, GL_R16F, m_noise_size, m_noise_size, 0, GL_RGB, GL_FLOAT, &m_noise[0]);
+	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB16F, m_noise_size, m_noise_size, 0, GL_RGB, GL_FLOAT, &m_noise[0]);
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
